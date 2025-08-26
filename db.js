@@ -20,6 +20,7 @@ let toursCollection;
 let airTicktCollection;
 let teamsMemberCollection;
 let visitorsCollection;
+let bookingsCollection;
 
 // Connect to MongoDB and initialize collections
 async function connectDB() {
@@ -32,6 +33,7 @@ async function connectDB() {
     airTicktCollection = db.collection('flights');
     teamsMemberCollection = db.collection('teams');
     visitorsCollection = db.collection('visitors');
+    bookingsCollection = db.collection('bookings');
 
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
@@ -64,6 +66,10 @@ function getvisitorsCollection() {
   if (!visitorsCollection) throw new Error('❌ TeamsMember collection not initialized. Call connectDB first.');
   return visitorsCollection;
 }
+function getbookingsCollection() {
+  if (!bookingsCollection) throw new Error('❌ TeamsMember collection not initialized. Call connectDB first.');
+  return bookingsCollection;
+}
 
 // Export functions
 module.exports = {
@@ -73,4 +79,5 @@ module.exports = {
   getAirTicktCollection,
   getTeamsMembertCollection,
   getvisitorsCollection,
+  getbookingsCollection,
 };

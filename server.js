@@ -9,6 +9,7 @@ const tourRoutes = require('./routes/tours');
 const flightRoutes = require('./routes/flights');
 const teamsMemberRoutes = require('./routes/teamsMember');
 const visitorsRoutes = require('./routes/visitors');
+const bookingsRoutes = require('./routes/bookings');
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/tours', tourRoutes);
 app.use('/flights', flightRoutes);
 app.use('/teams', teamsMemberRoutes);
 app.use('/visitors', visitorsRoutes);
+app.use('/bookings', bookingsRoutes);
 
 // === Protected Admin-Only Route ===
 app.delete('/admin/delete', verifyFirebaseToken, (req, res) => {
