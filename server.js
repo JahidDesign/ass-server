@@ -10,6 +10,7 @@ const flightRoutes = require('./routes/flights');
 const teamsMemberRoutes = require('./routes/teamsMember');
 const visitorsRoutes = require('./routes/visitors');
 const bookingsRoutes = require('./routes/bookings');
+const hotelBookingsRoutes = require('./routes/hotelbook');
 
 dotenv.config();
 
@@ -22,16 +23,16 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 let serviceAccount;
 try {
   serviceAccount = require(FIREBASE_KEY_PATH);
-  console.log('✅ Firebase key loaded from:', FIREBASE_KEY_PATH);
+  console.log('Firebase key loaded from:', FIREBASE_KEY_PATH);
 } catch (error) {
-  console.error('❌ Failed to load Firebase service account key:', error.message);
+  console.error('Failed to load Firebase service account key:', error.message);
   process.exit(1);
 }
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
-console.log('✅ Firebase Admin initialized',serviceAccount);
+console.log(' Firebase Admin initialized',serviceAccount);
 
 // === Middleware ===
 app.use(cors());
@@ -64,6 +65,7 @@ app.use('/flights', flightRoutes);
 app.use('/teams', teamsMemberRoutes);
 app.use('/visitors', visitorsRoutes);
 app.use('/bookings', bookingsRoutes);
+app.use('/hotelbook', hotelBookingsRoutes);
 
 // === Protected Admin-Only Route ===
 app.delete('/admin/delete', verifyFirebaseToken, (req, res) => {
@@ -76,7 +78,7 @@ app.delete('/admin/delete', verifyFirebaseToken, (req, res) => {
 
 // === Health Check & Fallback ===
 app.get('/', (req, res) => {
-  res.send('🌍 Travel API is running...');
+  res.send('Travel API is running...');
 });
 
 app.get('/health', (req, res) => {
@@ -98,10 +100,10 @@ app.use((err, req, res, next) => {
 connectDB()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`🚀 Server is running at http://localhost:${PORT}`);
+      console.log(`Server is running at http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('❌ Failed to connect to the database:', err.message);
+    console.error('Failed to connect to the database:', err.message);
     process.exit(1);
   });
