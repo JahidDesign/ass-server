@@ -1,4 +1,3 @@
-// routes/customers.js
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -13,7 +12,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 // ===== Helper: Sign JWT =====
 function signToken(user) {
   return jwt.sign(
-    { id: user._id, email: user.email, role: user.role },
+    { id: user._id, email: user.email }, // role removed
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
@@ -29,7 +28,7 @@ function sanitizeUser(user) {
 // ===== CREATE / REGISTER =====
 router.post("/", async (req, res) => {
   try {
-    const { uid, name, email, password, photo, phone, role, status } = req.body;
+    const { uid, name, email, password, photo, phone, status } = req.body;
     if (!uid || !name || !email || !password)
       return res.status(400).json({ error: "Missing required fields." });
 
@@ -45,7 +44,6 @@ router.post("/", async (req, res) => {
       password: hashedPassword,
       photo: photo || "",
       phone: phone || "",
-      role: role || "customer",
       status: status || "active",
       createdAt: new Date(),
     };
@@ -94,7 +92,6 @@ router.post("/firebase-login", verifyFirebaseToken, async (req, res) => {
         email,
         photo: picture || "",
         phone: phone || "",
-        role: "customer",
         status: "active",
         createdAt: new Date(),
       };
@@ -138,13 +135,12 @@ router.get("/:id", async (req, res) => {
 // ===== UPDATE USER =====
 router.put("/:id", async (req, res) => {
   try {
-    const { name, email, password, photo, phone, role, status } = req.body;
+    const { name, email, password, photo, phone, status } = req.body;
     const updateData = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (photo) updateData.photo = photo;
     if (phone) updateData.phone = phone;
-    if (role) updateData.role = role;
     if (status) updateData.status = status;
     if (password) updateData.password = await bcrypt.hash(password, 10);
 

@@ -13,7 +13,7 @@ const teamsMemberRoutes = require('./routes/teamsMember');
 const visitorsRoutes = require('./routes/visitors');
 const bookingsRoutes = require('./routes/bookings');
 const hotelBookingsRoutes = require('./routes/hotelbook');
-const customersRouter = require("./routes/customers");
+const customersRouter = require("./routes/cus");
 
 dotenv.config();
 
