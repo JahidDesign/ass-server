@@ -78,7 +78,7 @@ function gethotelBookingsCollection() {
   if (!hotelBookingsCollection) throw new Error('❌ TeamsMember collection not initialized. Call connectDB first.');
   return hotelBookingsCollection;
 }
-function getcustomersCollection() {
+function getCustomersCollection() {
   if (!customersCollection) throw new Error('❌ TeamsMember collection not initialized. Call connectDB first.');
   return customersCollection;
 }
@@ -93,5 +93,5 @@ module.exports = {
   getvisitorsCollection,
   getbookingsCollection,
   gethotelBookingsCollection,
-  getcustomersCollection,
+  getCustomersCollection,
 };
