@@ -7,7 +7,7 @@ const { getCustomersCollection } = require("../db");
 const router = express.Router();
 
 // JWT secret (better to store in .env)
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const JWT_SECRET = process.env.JWT_SECRET || "4adb4dadd6fcf937016a719b1ec35b9dae4d31534ec753fddb7e9c7b7c5c02cbbac37f1b2b933594d669dcfbb25757bbdef5e6bcca5af71d2335b8ae777a9e7e";
 
 /**
  * @route   GET /customers
