@@ -39,7 +39,7 @@ async function connectDB() {
     hotelBookingsCollection = db.collection('hotelbook');
     CustomerCollection = db.collection('customers');
 
-    console.log('✅ MongoDB connected successfully');
+    console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('❌ Failed to connect to MongoDB:', error);
     process.exit(1); // Exit the server if DB connection fails

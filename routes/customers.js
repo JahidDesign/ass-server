@@ -1,3 +1,4 @@
+// routes/customers.js
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -6,11 +7,10 @@ const { getCustomerCollection } = require("../db");
 const verifyFirebaseToken = require("../verifyFirebaseToken");
 
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "super_secret_key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
-// ===== Sign JWT =====
+// ===== Helper: Sign JWT =====
 function signToken(user) {
   return jwt.sign(
     { id: user._id, email: user.email, role: user.role },
@@ -19,14 +19,14 @@ function signToken(user) {
   );
 }
 
-// ===== Sanitize user =====
+// ===== Helper: Remove password =====
 function sanitizeUser(user) {
   if (!user) return null;
   const { password, ...rest } = user;
   return rest;
 }
 
-// ===== REGISTER / CREATE USER =====
+// ===== CREATE / REGISTER =====
 router.post("/", async (req, res) => {
   try {
     const { uid, name, email, password, photo, phone, role, status } = req.body;
@@ -51,14 +51,14 @@ router.post("/", async (req, res) => {
     };
 
     const result = await customers.insertOne(newUser);
-    res.status(201).json({ message: "User created", id: result.insertedId });
+    res.status(201).json({ message: "User created", user: sanitizeUser({ _id: result.insertedId, ...newUser }) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ===== LOGIN WITH EMAIL/PASSWORD =====
+// ===== LOGIN =====
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -79,10 +79,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ===== GOOGLE LOGIN / FIREBASE LOGIN =====
+// ===== FIREBASE LOGIN =====
 router.post("/firebase-login", verifyFirebaseToken, async (req, res) => {
   try {
-    const { uid, email, name, picture } = req.firebaseUser;
+    const { uid, email, name, picture, phone } = req.firebaseUser;
 
     const customers = await getCustomerCollection();
     let user = await customers.findOne({ email });
@@ -93,7 +93,7 @@ router.post("/firebase-login", verifyFirebaseToken, async (req, res) => {
         name: name || "Firebase User",
         email,
         photo: picture || "",
-        phone: "",
+        phone: phone || "",
         role: "customer",
         status: "active",
         createdAt: new Date(),
@@ -110,11 +110,24 @@ router.post("/firebase-login", verifyFirebaseToken, async (req, res) => {
   }
 });
 
-// ===== PROTECTED ROUTE EXAMPLE =====
-router.get("/profile", verifyFirebaseToken, async (req, res) => {
+// ===== READ ALL USERS =====
+router.get("/", async (req, res) => {
   try {
     const customers = await getCustomerCollection();
-    const user = await customers.findOne({ email: req.firebaseUser.email });
+    const users = await customers.find({}).toArray();
+    res.json(users.map(sanitizeUser));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ===== READ SINGLE USER BY ID =====
+router.get("/:id", async (req, res) => {
+  try {
+    const customers = await getCustomerCollection();
+    const user = await customers.findOne({ _id: new ObjectId(req.params.id) });
+    if (!user) return res.status(404).json({ error: "User not found" });
     res.json(sanitizeUser(user));
   } catch (err) {
     console.error(err);
@@ -122,51 +135,45 @@ router.get("/profile", verifyFirebaseToken, async (req, res) => {
   }
 });
 
-// ===== CRUD (optional) =====
-// GET all users
-router.get("/", async (req, res) => {
-  const customers = await getCustomerCollection();
-  const users = await customers.find({}).toArray();
-  res.json(users.map(sanitizeUser));
-});
-
-// GET user by ID
-router.get("/:id", async (req, res) => {
-  const customers = await getCustomerCollection();
-  const user = await customers.findOne({ _id: new ObjectId(req.params.id) });
-  if (!user) return res.status(404).json({ error: "User not found" });
-  res.json(sanitizeUser(user));
-});
-
-// UPDATE user
+// ===== UPDATE USER =====
 router.put("/:id", async (req, res) => {
-  const { name, email, password, photo, phone, role, status } = req.body;
-  const updateData = {};
-  if (name) updateData.name = name;
-  if (email) updateData.email = email;
-  if (photo) updateData.photo = photo;
-  if (phone) updateData.phone = phone;
-  if (role) updateData.role = role;
-  if (status) updateData.status = status;
-  if (password) updateData.password = await bcrypt.hash(password, 10);
+  try {
+    const { name, email, password, photo, phone, role, status } = req.body;
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (photo) updateData.photo = photo;
+    if (phone) updateData.phone = phone;
+    if (role) updateData.role = role;
+    if (status) updateData.status = status;
+    if (password) updateData.password = await bcrypt.hash(password, 10);
 
-  const customers = await getCustomerCollection();
-  const result = await customers.findOneAndUpdate(
-    { _id: new ObjectId(req.params.id) },
-    { $set: updateData },
-    { returnDocument: "after" }
-  );
+    const customers = await getCustomerCollection();
+    const result = await customers.findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: updateData },
+      { returnDocument: "after" }
+    );
 
-  if (!result.value) return res.status(404).json({ error: "User not found" });
-  res.json({ message: "User updated", user: sanitizeUser(result.value) });
+    if (!result.value) return res.status(404).json({ error: "User not found" });
+    res.json({ message: "User updated", user: sanitizeUser(result.value) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-// DELETE user
+// ===== DELETE USER =====
 router.delete("/:id", async (req, res) => {
-  const customers = await getCustomerCollection();
-  const result = await customers.deleteOne({ _id: new ObjectId(req.params.id) });
-  if (result.deletedCount === 0) return res.status(404).json({ error: "User not found" });
-  res.json({ message: "User deleted" });
+  try {
+    const customers = await getCustomerCollection();
+    const result = await customers.deleteOne({ _id: new ObjectId(req.params.id) });
+    if (result.deletedCount === 0) return res.status(404).json({ error: "User not found" });
+    res.json({ message: "User deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 module.exports = router;

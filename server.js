@@ -1,9 +1,11 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const admin = require('firebase-admin');
 const { connectDB } = require('./db');
 
+// Import Routes
 const hotelRoutes = require('./routes/hotels');
 const tourRoutes = require('./routes/tours');
 const flightRoutes = require('./routes/flights');
@@ -11,7 +13,7 @@ const teamsMemberRoutes = require('./routes/teamsMember');
 const visitorsRoutes = require('./routes/visitors');
 const bookingsRoutes = require('./routes/bookings');
 const hotelBookingsRoutes = require('./routes/hotelbook');
-const customerRouter  = require('./routes/customers');
+const customersRouter = require("./routes/customers");
 
 dotenv.config();
 
@@ -33,7 +35,7 @@ try {
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
-console.log(' Firebase Admin initialized',serviceAccount);
+console.log('Firebase Admin initialized');
 
 // === Middleware ===
 app.use(cors());
@@ -67,9 +69,9 @@ app.use('/teams', teamsMemberRoutes);
 app.use('/visitors', visitorsRoutes);
 app.use('/bookings', bookingsRoutes);
 app.use('/hotelbook', hotelBookingsRoutes);
-app.use('/customers', customerRouter );
+app.use("/customers", customersRouter);
 
-// === Protected Admin-Only Route ===
+// === Protected Admin-Only Route Example ===
 app.delete('/admin/delete', verifyFirebaseToken, (req, res) => {
   const userEmail = req.user.email;
   if (userEmail !== ADMIN_EMAIL) {
@@ -78,11 +80,10 @@ app.delete('/admin/delete', verifyFirebaseToken, (req, res) => {
   res.json({ message: 'Admin deletion access granted' });
 });
 
-// === Health Check & Fallback ===
+// === Health Check ===
 app.get('/', (req, res) => {
   res.send('Travel API is running...');
 });
-
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
