@@ -1,72 +1,82 @@
+// routes/visitors.js
 const express = require('express');
 const { ObjectId } = require('mongodb');
 const { getvisitorsCollection } = require('../db');
 
 const router = express.Router();
 
-// ========== GET All Team Members ==========
+// ========================
+// GET All Profiles
+// ========================
 router.get('/', async (req, res) => {
   try {
-    const members = await getvisitorsCollection().find().toArray();
-    res.status(200).json(members);
-  } catch (error) {
-    console.error('[GET /visitors] Error:', error);
-    res.status(500).json({ error: 'Failed to fetch team members' });
+    const profiles = await getvisitorsCollection().find().toArray();
+    res.status(200).json(profiles);
+  } catch (err) {
+    console.error('[GET /visitors] Error:', err);
+    res.status(500).json({ error: 'Failed to fetch profiles' });
   }
 });
 
-// ========== GET Team Member by ID ==========
+// ========================
+// GET Profile by ID
+// ========================
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
-
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({ error: 'Invalid ID format' });
-  }
+  if (!ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid ID format' });
 
   try {
-    const member = await getvisitorsCollection().findOne({ _id: new ObjectId(id) });
-    if (!member) {
-      return res.status(404).json({ error: 'Team member not found' });
-    }
-    res.status(200).json(member);
-  } catch (error) {
-    console.error(`[GET /visitors/${id}] Error:`, error);
-    res.status(500).json({ error: 'Failed to retrieve team member' });
+    const profile = await getvisitorsCollection().findOne({ _id: new ObjectId(id) });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    res.status(200).json(profile);
+  } catch (err) {
+    console.error(`[GET /visitors/${id}] Error:`, err);
+    res.status(500).json({ error: 'Failed to fetch profile' });
   }
 });
 
-// ========== POST Create New Team Member ==========
+// ========================
+// POST Create or Update Profile
+// ========================
 router.post('/', async (req, res) => {
-  const member = req.body;
+  const profile = req.body;
 
-  // Updated required fields (no longer using 'role')
-  const requiredFields = ['name', 'title', 'description', 'photoUrl', 'position'];
-  const missingFields = requiredFields.filter((field) => !member[field]);
-
-  if (missingFields.length > 0) {
-    return res.status(400).json({ error: `Missing fields: ${missingFields.join(', ')}` });
-  }
+  if (!profile.email) return res.status(400).json({ error: 'Email is required' });
 
   try {
-    const result = await getvisitorsCollection().insertOne(member);
-    res.status(201).json({
-      message: 'Team member created successfully',
-      insertedId: result.insertedId,
-    });
-  } catch (error) {
-    console.error('[POST /visitors] Error:', error);
-    res.status(500).json({ error: 'Failed to create team member' });
+    const collection = getvisitorsCollection();
+
+    // Check if profile already exists
+    const existing = await collection.findOne({ email: profile.email });
+
+    if (existing) {
+      // Update existing profile
+      await collection.updateOne(
+        { _id: existing._id },
+        { $set: profile }
+      );
+      const updatedProfile = await collection.findOne({ _id: existing._id });
+      return res.status(200).json(updatedProfile);
+    } else {
+      // Create new profile
+      const result = await collection.insertOne(profile);
+      const newProfile = await collection.findOne({ _id: result.insertedId });
+      return res.status(201).json(newProfile);
+    }
+  } catch (err) {
+    console.error('[POST /visitors] Error:', err);
+    res.status(500).json({ error: 'Failed to save profile' });
   }
 });
 
-// ========== PUT Update Team Member by ID ==========
+// ========================
+// PUT Update Profile by ID
+// ========================
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
 
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({ error: 'Invalid ID format' });
-  }
+  if (!ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid ID format' });
 
   try {
     const result = await getvisitorsCollection().updateOne(
@@ -74,36 +84,33 @@ router.put('/:id', async (req, res) => {
       { $set: updateData }
     );
 
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Team member not found' });
-    }
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Profile not found' });
 
-    res.status(200).json({ message: 'Team member updated successfully' });
-  } catch (error) {
-    console.error(`[PUT /visitors/${id}] Error:`, error);
-    res.status(500).json({ error: 'Failed to update team member' });
+    const updatedProfile = await getvisitorsCollection().findOne({ _id: new ObjectId(id) });
+    res.status(200).json(updatedProfile);
+  } catch (err) {
+    console.error(`[PUT /visitors/${id}] Error:`, err);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 
-// ========== DELETE Team Member by ID ==========
+// ========================
+// DELETE Profile by ID
+// ========================
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({ error: 'Invalid ID format' });
-  }
+  if (!ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid ID format' });
 
   try {
     const result = await getvisitorsCollection().deleteOne({ _id: new ObjectId(id) });
 
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Team member not found' });
-    }
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'Profile not found' });
 
-    res.status(200).json({ message: 'Team member deleted successfully' });
-  } catch (error) {
-    console.error(`[DELETE /visitors/${id}] Error:`, error);
-    res.status(500).json({ error: 'Failed to delete team member' });
+    res.status(200).json({ message: 'Profile deleted successfully' });
+  } catch (err) {
+    console.error(`[DELETE /visitors/${id}] Error:`, err);
+    res.status(500).json({ error: 'Failed to delete profile' });
   }
 });
 
