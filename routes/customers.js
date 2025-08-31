@@ -1,8 +1,10 @@
+// routes/customerRoutes.js
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { ObjectId } = require("mongodb");
 const { getCustomerCollection } = require("../db");
+
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "4adb4dadd6fcf937016a719b1ec35b9dae4d31534ec753fddb7e9c7b7c5c02cbbac37f1b2b933594d669dcfbb25757bbdef5e6bcca5af71d2335b8ae777a9e7e";
@@ -51,8 +53,8 @@ router.post("/", async (req, res) => {
     const result = await customers.insertOne(newUser);
     res.status(201).json({ message: "User created successfully", id: result.insertedId });
   } catch (err) {
-    console.error("CREATE USER ERROR:", err);
-    res.status(500).json({ error: "Failed to create user. Please try again later." });
+    console.error("CREATE USER ERROR:", err.message);
+    res.status(500).json({ error: "Failed to create user. Try again later." });
   }
 });
 
@@ -74,8 +76,8 @@ router.post("/login", async (req, res) => {
     const token = signToken(user);
     res.json({ user: sanitizeUser(user), token });
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
-    res.status(500).json({ error: "Login failed. Please try again later." });
+    console.error("LOGIN ERROR:", err.message);
+    res.status(500).json({ error: "Login failed. Try again later." });
   }
 });
 
@@ -106,8 +108,8 @@ router.post("/google-login", async (req, res) => {
     const token = signToken(user);
     res.json({ user: sanitizeUser(user), token });
   } catch (err) {
-    console.error("GOOGLE LOGIN ERROR:", err);
-    res.status(500).json({ error: "Google login failed. Please try again later." });
+    console.error("GOOGLE LOGIN ERROR:", err.message);
+    res.status(500).json({ error: "Google login failed. Try again later." });
   }
 });
 
@@ -118,8 +120,8 @@ router.get("/", async (req, res) => {
     const users = await customers.find({}).toArray();
     res.json(users.map(sanitizeUser));
   } catch (err) {
-    console.error("FETCH USERS ERROR:", err);
-    res.status(500).json({ error: "Failed to fetch users" });
+    console.error("FETCH USERS ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch users. Check database connection." });
   }
 });
 
@@ -134,7 +136,7 @@ router.get("/:id", async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
     res.json(sanitizeUser(user));
   } catch (err) {
-    console.error("FETCH USER ERROR:", err);
+    console.error("FETCH USER ERROR:", err.message);
     res.status(500).json({ error: "Failed to fetch user" });
   }
 });
@@ -165,7 +167,7 @@ router.put("/:id", async (req, res) => {
     if (!result.value) return res.status(404).json({ error: "User not found" });
     res.json({ message: "User updated successfully", user: sanitizeUser(result.value) });
   } catch (err) {
-    console.error("UPDATE USER ERROR:", err);
+    console.error("UPDATE USER ERROR:", err.message);
     res.status(500).json({ error: "Failed to update user" });
   }
 });
@@ -181,7 +183,7 @@ router.delete("/:id", async (req, res) => {
     if (result.deletedCount === 0) return res.status(404).json({ error: "User not found" });
     res.json({ message: "User deleted successfully" });
   } catch (err) {
-    console.error("DELETE USER ERROR:", err);
+    console.error("DELETE USER ERROR:", err.message);
     res.status(500).json({ error: "Failed to delete user" });
   }
 });
