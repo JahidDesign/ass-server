@@ -1,21 +1,27 @@
-// server/middleware/auth.js
-const admin = require("../firebase");
+const admin = require("firebase-admin");
+require("dotenv").config();
 
-async function verifyFirebaseToken(req, res, next) {
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)),
+  });
+}
+
+const verifyFirebaseToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "No token provided" });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized: No Firebase token" });
   }
 
   const token = authHeader.split(" ")[1];
-
   try {
     const decoded = await admin.auth().verifyIdToken(token);
-    req.user = decoded; // now you have uid, email, etc.
+    req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({ message: "Invalid token", error: err });
+    console.error("❌ Firebase token error:", err);
+    return res.status(401).json({ error: "Unauthorized: Invalid Firebase token" });
   }
-}
+};
 
 module.exports = verifyFirebaseToken;

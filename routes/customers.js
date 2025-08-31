@@ -4,12 +4,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { ObjectId } = require("mongodb");
 const { getCustomersCollection } = require("../db");
-const verifyFirebaseToken = require("../middleware/verifyFirebaseToken");
+const verifyFirebaseToken = require("../middleware/auth"); // Firebase middleware
 require("dotenv").config();
 
 const router = express.Router();
+
+const JWT_SECRET = process.env.JWT_SECRET || "your_default_jwt_secret";
 const JWT_EXPIRES = "7d";
-const JWT_SECRET = process.env.JWT_SECRET || "4adb4dadd6fcf937016a719b1ec35b9dae4d31534ec753fddb7e9c7b7c5c02cbbac37f1b2b933594d669dcfbb25757bbdef5e6bcca5af71d2335b8ae777a9e7e";
 
 // ===== JWT Middleware =====
 const verifyToken = (req, res, next) => {
@@ -27,10 +28,17 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+// ===== ObjectId Validation =====
+const isValidObjectId = (id) =>
+  ObjectId.isValid(id) && String(new ObjectId(id)) === id;
+
 // ===== GET All Customers (Protected) =====
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const customers = await getCustomersCollection().find().project({ password: 0 }).toArray();
+    const customers = await getCustomersCollection()
+      .find()
+      .project({ password: 0 })
+      .toArray();
     res.json(customers);
   } catch (err) {
     console.error(err);
@@ -40,9 +48,13 @@ router.get("/", verifyToken, async (req, res) => {
 
 // ===== GET Customer By ID (Protected) =====
 router.get("/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id))
+    return res.status(400).json({ error: "Invalid customer ID" });
+
   try {
     const customer = await getCustomersCollection().findOne(
-      { _id: new ObjectId(req.params.id) },
+      { _id: new ObjectId(id) },
       { projection: { password: 0 } }
     );
     if (!customer) return res.status(404).json({ error: "Customer not found" });
@@ -53,19 +65,24 @@ router.get("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// ===== REGISTER Customer (Email/Password) =====
+// ===== REGISTER Customer =====
 router.post("/", async (req, res) => {
   try {
     const { fullName, email, password, phone, firebaseUid, photo } = req.body;
-    if (!email || !password) return res.status(400).json({ error: "Email & password required" });
+
+    if (!email) return res.status(400).json({ error: "Email is required" });
+    if (!password && !firebaseUid) {
+      return res.status(400).json({ error: "Password required for email signups" });
+    }
 
     const coll = getCustomersCollection();
     const existing = await coll.findOne({ email });
     if (existing) return res.status(409).json({ error: "Email already registered" });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     const newCustomer = {
-      fullName,
+      fullName: fullName || "User",
       email,
       password: hashedPassword,
       phone: phone || "",
@@ -76,26 +93,41 @@ router.post("/", async (req, res) => {
 
     const result = await coll.insertOne(newCustomer);
 
-    const token = jwt.sign({ id: result.insertedId, email }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
-    res.status(201).json({ message: "Customer created", token, customer: { id: result.insertedId, fullName, email, phone, photo } });
+    const token = jwt.sign({ id: result.insertedId, email }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES,
+    });
+
+    res.status(201).json({
+      message: "Customer created",
+      token,
+      customer: { id: result.insertedId, fullName, email, phone, photo },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Registration failed" });
   }
 });
 
-// ===== LOGIN Customer (Email/Password) =====
+// ===== LOGIN Customer =====
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const coll = getCustomersCollection();
     const customer = await coll.findOne({ email });
+
     if (!customer) return res.status(401).json({ error: "Invalid credentials" });
+
+    if (!customer.password) {
+      return res.status(401).json({ error: "Please login with Google" });
+    }
 
     const match = await bcrypt.compare(password, customer.password);
     if (!match) return res.status(401).json({ error: "Invalid credentials" });
 
-    const token = jwt.sign({ id: customer._id, email: customer.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+    const token = jwt.sign({ id: customer._id, email: customer.email }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES,
+    });
+
     const { password: pw, ...rest } = customer;
     res.json({ token, customer: rest });
   } catch (err) {
@@ -104,10 +136,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ===== FIREBASE LOGIN =====
+// ===== FIREBASE / GOOGLE LOGIN =====
 router.post("/firebase-login", verifyFirebaseToken, async (req, res) => {
   try {
-    const { uid, email, name, picture, phone_number } = req.firebaseUser;
+    const { uid, email, name, picture, phone_number } = req.user;
     const coll = getCustomersCollection();
 
     let customer = await coll.findOne({ email });
@@ -124,50 +156,14 @@ router.post("/firebase-login", verifyFirebaseToken, async (req, res) => {
       customer = { _id: result.insertedId, ...newCustomer };
     }
 
-    const token = jwt.sign({ id: customer._id, email: customer.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+    const token = jwt.sign({ id: customer._id, email: customer.email }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES,
+    });
+
     res.json({ token, customer });
   } catch (err) {
-    console.error(err);
+    console.error("Firebase login error:", err);
     res.status(500).json({ error: "Firebase login failed" });
-  }
-});
-
-// ===== UPDATE Customer (Protected) =====
-router.put("/:id", verifyToken, async (req, res) => {
-  try {
-    const { fullName, phone, photo, password } = req.body;
-    const update = {};
-    if (fullName) update.fullName = fullName;
-    if (phone) update.phone = phone;
-    if (photo) update.photo = photo;
-    if (password) update.password = await bcrypt.hash(password, 10);
-    update.updatedAt = new Date();
-
-    const coll = getCustomersCollection();
-    const result = await coll.findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: update },
-      { returnDocument: "after" }
-    );
-    if (!result.value) return res.status(404).json({ error: "Customer not found" });
-    const { password: pw, ...rest } = result.value;
-    res.json({ message: "Customer updated", customer: rest });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Update failed" });
-  }
-});
-
-// ===== DELETE Customer (Protected) =====
-router.delete("/:id", verifyToken, async (req, res) => {
-  try {
-    const coll = getCustomersCollection();
-    const result = await coll.deleteOne({ _id: new ObjectId(req.params.id) });
-    if (result.deletedCount === 0) return res.status(404).json({ error: "Customer not found" });
-    res.json({ message: "Customer deleted" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Delete failed" });
   }
 });
 
