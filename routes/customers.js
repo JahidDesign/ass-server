@@ -29,13 +29,16 @@ function sanitizeUser(user) {
 router.post("/", async (req, res) => {
   try {
     const { uid, name, email, password, photo, phone, role, status } = req.body;
-    if (!uid || !name || !email || !password)
+
+    if (!uid || !name || !email || !password) {
       return res.status(400).json({ error: "Missing required fields: uid, name, email, password" });
+    }
 
     const customers = await getCustomersCollection();
     const existing = await customers.findOne({ email });
-    if (existing)
+    if (existing) {
       return res.status(409).json({ error: `User with email "${email}" already exists` });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = {
@@ -62,13 +65,15 @@ router.post("/", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
+    if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
+    }
 
     const customers = await getCustomersCollection();
     const user = await customers.findOne({ email });
-    if (!user || !user.password)
+    if (!user || !user.password) {
       return res.status(401).json({ error: "Invalid email or password" });
+    }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: "Incorrect password" });
