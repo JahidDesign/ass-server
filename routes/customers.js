@@ -3,7 +3,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { ObjectId } = require("mongodb");
-const { getCustomerCollection } = require("../db");
+const { getCustomersCollection } = require("../db");
 
 const router = express.Router();
 
@@ -32,7 +32,7 @@ router.post("/", async (req, res) => {
     if (!uid || !name || !email || !password)
       return res.status(400).json({ error: "Missing required fields: uid, name, email, password" });
 
-    const customers = await getCustomerCollection();
+    const customers = await getCustomersCollection();
     const existing = await customers.findOne({ email });
     if (existing)
       return res.status(409).json({ error: `User with email "${email}" already exists` });
@@ -65,7 +65,7 @@ router.post("/login", async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ error: "Email and password are required" });
 
-    const customers = await getCustomerCollection();
+    const customers = await getCustomersCollection();
     const user = await customers.findOne({ email });
     if (!user || !user.password)
       return res.status(401).json({ error: "Invalid email or password" });
@@ -87,7 +87,7 @@ router.post("/google-login", async (req, res) => {
     const { uid, email, name, photo } = req.body;
     if (!uid || !email) return res.status(400).json({ error: "UID and email are required" });
 
-    const customers = await getCustomerCollection();
+    const customers = await getCustomersCollection();
     let user = await customers.findOne({ email });
 
     if (!user) {
@@ -116,7 +116,7 @@ router.post("/google-login", async (req, res) => {
 // ===== READ ALL =====
 router.get("/", async (req, res) => {
   try {
-    const customers = await getCustomerCollection();
+    const customers = await getCustomersCollection();
     const users = await customers.find({}).toArray();
     res.json(users.map(sanitizeUser));
   } catch (err) {
@@ -157,7 +157,7 @@ router.put("/:id", async (req, res) => {
     if (status) updateData.status = status;
     if (password) updateData.password = await bcrypt.hash(password, 10);
 
-    const customers = await getCustomerCollection();
+    const customers = await getCustomersCollection();
     const result = await customers.findOneAndUpdate(
       { _id: new ObjectId(req.params.id) },
       { $set: updateData },
@@ -178,7 +178,7 @@ router.delete("/:id", async (req, res) => {
     if (!ObjectId.isValid(req.params.id))
       return res.status(400).json({ error: "Invalid user ID format" });
 
-    const customers = await getCustomerCollection();
+    const customers = await getCustomersCollection();
     const result = await customers.deleteOne({ _id: new ObjectId(req.params.id) });
     if (result.deletedCount === 0) return res.status(404).json({ error: "User not found" });
     res.json({ message: "User deleted successfully" });
