@@ -8,7 +8,8 @@
     "firebase-admin": "^13.5.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.17.0",
-    "mongoose": "^8.16.0"
+    "mongoose": "^8.16.0",
+    "validator": "^13.15.15"
   },
   "name": "server",
   "version": "1.0.0",
