@@ -7,7 +7,7 @@ const { getCustomersCollection } = require("../db");
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || "4adb4dadd6fcf937016a719b1ec35b9dae4d31534ec753fddb7e9c7b7c5c02cbbac37f1b2b933594d669dcfbb25757bbdef5e6bcca5af71d2335b8ae777a9e7e";
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_here";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 // ===== Helpers =====
@@ -113,7 +113,7 @@ router.post("/google-login", async (req, res) => {
   }
 });
 
-// ===== READ ALL =====
+// ===== READ ALL USERS =====
 router.get("/", async (req, res) => {
   try {
     const customers = await getCustomersCollection();
@@ -125,15 +125,16 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ===== READ ONE =====
+// ===== READ SINGLE USER =====
 router.get("/:id", async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id))
       return res.status(400).json({ error: "Invalid user ID format" });
 
-    const customers = await getCustomerCollection();
+    const customers = await getCustomersCollection();
     const user = await customers.findOne({ _id: new ObjectId(req.params.id) });
     if (!user) return res.status(404).json({ error: "User not found" });
+
     res.json(sanitizeUser(user));
   } catch (err) {
     console.error("FETCH USER ERROR:", err.message);
@@ -181,6 +182,7 @@ router.delete("/:id", async (req, res) => {
     const customers = await getCustomersCollection();
     const result = await customers.deleteOne({ _id: new ObjectId(req.params.id) });
     if (result.deletedCount === 0) return res.status(404).json({ error: "User not found" });
+
     res.json({ message: "User deleted successfully" });
   } catch (err) {
     console.error("DELETE USER ERROR:", err.message);
